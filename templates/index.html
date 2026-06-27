@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TP357 Sensor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+      body {
+        background: #f8f9fa;
+      }
+      .gauge-card {
+        min-height: 330px;
+      }
+      .gauge-chart {
+        width: 100%;
+        height: 220px;
+      }
+      .code-url {
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+      <div class="container">
+        <a class="navbar-brand" href="#">TP357 Home Screen</a>
+        <span class="badge bg-light text-primary">Sensor Dashboard</span>
+      </div>
+    </nav>
+
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h1 class="h4">Temperature & Humidity</h1>
+              <p class="text-muted mb-0">The half-circle chart shows values from low on the left to extreme on the right. Values are loaded from the API endpoint below.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card gauge-card shadow-sm">
+            <div class="card-body text-center d-flex flex-column justify-content-between">
+              <div>
+                <h5 class="card-title">Temperatur</h5>
+                <canvas id="temperatureChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card gauge-card shadow-sm">
+            <div class="card-body text-center d-flex flex-column justify-content-between">
+              <h5 class="card-title">Luftfeuchtigkeit</h5>
+              <canvas id="humidityChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+              <div>
+                <h6 class="mb-1">API endpoint</h6>
+                <p class="code-url mb-0"><code>{{ url_for('get_sensor_reading') }}</code></p>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <button id="refreshButton" class="btn btn-primary">Refresh readings</button>
+                <span id="statusBadge" class="badge bg-secondary">Waiting for data</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      const temperatureCtx = document.getElementById('temperatureChart');
+      const humidityCtx = document.getElementById('humidityChart');
+      const temperatureLimit = [25, 30, Infinity];
+      const humidityLimit = [60, 70, Infinity];
+
+      const formatNumber = (value, affix = '') => {
+        const number = Number(value);
+        if (Number.isNaN(number)) {
+          return '';
+        }
+        const [integerPart, fractionPart] = String(number).split('.');
+        const formatted = fractionPart ? `${integerPart},${fractionPart}` : integerPart;
+        return affix ? `${formatted} ${affix}` : formatted;
+      }
+
+      const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw(chart, args, options) {
+          const { ctx, chartArea: { left, right, top, bottom } } = chart;
+          ctx.save();
+
+          const centerX = (left + right) / 2;
+          const centerY = (top + bottom) / 2;
+
+          ctx.font = '24px sans-serif';
+          ctx.textAlign = "center";
+          ctx.fillStyle = '#666666';
+          ctx.fillText(chart.options.centerValue, centerX, centerY + 20);
+
+          ctx.restore();
+        }
+      };
+
+      function createGauge(ctx) {
+        return new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ["Normal", "Warnung", "Gefährlich"],
+                datasets: [{
+                    labels: ["Normal", "Warnung", "Gefährlich"],
+                    data:[33.3,33.3,33.3],
+                    backgroundColor: [
+                        '#187327',
+                        '#fcb603',
+                        '#9c191f'
+                    ],
+                    offset:[20,20,20], 
+                    borderWidth: 0
+                }]
+            },
+            options: {
+              plugins: {
+                legend: {
+                    display: false
+                },                
+              },
+              events: [],
+              centerValue: "Lesen...",
+              cutout: '75%', 
+              rotation: -90,
+              circumference: 180
+            },
+            plugins: [centerTextPlugin]
+        });
+      }
+
+      const temperatureChart = createGauge(temperatureCtx);
+      const humidityChart = createGauge(humidityCtx);
+
+      const setGaugeValue = (chart, value, offset) => {
+        chart.data.datasets[0].offset = offset;
+        chart.options.centerValue = value;
+        chart.update();
+      }
+
+      function updateDisplay(data) {
+        const temperature = data.temperature;
+        const humidity = data.humidity;
+
+        let temperatureIndex = undefined;
+
+        temperatureLimit.some((value, index) => {
+          if (temperature <= value) {
+            temperatureIndex = index;
+            return true;
+          }
+        })
+
+        let humidityIndex = undefined;
+
+        humidityLimit.some((value, index) => {
+          if (humidity <= value) {
+            humidityIndex = index;
+            return true;
+          }
+        })
+
+        let temperatureOffset = [20, 20, 20];
+        let humidityOffset = [20, 20, 20];
+
+        temperatureOffset[temperatureIndex] = 70;
+        humidityOffset[humidityIndex] = 70;
+        
+        console.log(temperature, humidity, temperatureOffset, humidityOffset)
+        setGaugeValue(temperatureChart, formatNumber(temperature, "°C"), temperatureOffset);
+        setGaugeValue(humidityChart, formatNumber(humidity, "%"), humidityOffset);
+      }
+
+      function setStatus(text, type = 'secondary') {
+        const badge = document.getElementById('statusBadge');
+        badge.className = `badge bg-${type}`;
+        badge.textContent = text;
+      }
+
+      function loadSensorReadings() {
+        setStatus('Loading...', 'info');
+        $.getJSON("{{ url_for('get_sensor_reading') }}")
+          .done(function(response) {
+            console.log(response)
+            if (response.temperature && response.humidity) {
+              updateDisplay(response);
+              setStatus('Live data loaded', 'success');
+            } else {
+              setStatus('Unexpected response', 'warning');
+            }
+          })
+          .fail(function() {
+            setStatus('API request failed', 'danger');
+          });
+      }
+
+      $(document).ready(function() {
+        loadSensorReadings();
+        $('#refreshButton').on('click', loadSensorReadings);
+      });
+    </script>
+  </body>
+</html>
