@@ -6,6 +6,8 @@
     <title>TP357 Sensor Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="../static/scripts/charts.js"></script>
+    <script src="../static/scripts/index.js"></script>
     <style>
       body {
         background: #f8f9fa;
@@ -84,108 +86,12 @@
       const temperatureLimit = [25, 30, Infinity];
       const humidityLimit = [60, 70, Infinity];
 
-      const formatNumber = (value, affix = '') => {
-        const number = Number(value);
-        if (Number.isNaN(number)) {
-          return '';
-        }
-        const [integerPart, fractionPart] = String(number).split('.');
-        const formatted = fractionPart ? `${integerPart},${fractionPart}` : integerPart;
-        return affix ? `${formatted} ${affix}` : formatted;
-      }
-
-      const centerTextPlugin = {
-        id: 'centerText',
-        afterDraw(chart, args, options) {
-          const { ctx, chartArea: { left, right, top, bottom } } = chart;
-          ctx.save();
-
-          const centerX = (left + right) / 2;
-          const centerY = (top + bottom) / 2;
-
-          ctx.font = '24px sans-serif';
-          ctx.textAlign = "center";
-          ctx.fillStyle = '#666666';
-          ctx.fillText(chart.options.centerValue, centerX, centerY + 20);
-
-          ctx.restore();
-        }
-      };
-
-      function createGauge(ctx) {
-        return new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ["Normal", "Warnung", "Gefährlich"],
-                datasets: [{
-                    labels: ["Normal", "Warnung", "Gefährlich"],
-                    data:[33.3,33.3,33.3],
-                    backgroundColor: [
-                        '#187327',
-                        '#fcb603',
-                        '#9c191f'
-                    ],
-                    offset:[20,20,20], 
-                    borderWidth: 0
-                }]
-            },
-            options: {
-              plugins: {
-                legend: {
-                    display: false
-                },                
-              },
-              events: [],
-              centerValue: "Lesen...",
-              cutout: '75%', 
-              rotation: -90,
-              circumference: 180
-            },
-            plugins: [centerTextPlugin]
-        });
-      }
-
       const temperatureChart = createGauge(temperatureCtx);
       const humidityChart = createGauge(humidityCtx);
 
-      const setGaugeValue = (chart, value, offset) => {
-        chart.data.datasets[0].offset = offset;
-        chart.options.centerValue = value;
-        chart.update();
-      }
-
-      function updateDisplay(data) {
-        const temperature = data.temperature;
-        const humidity = data.humidity;
-
-        let temperatureIndex = undefined;
-
-        temperatureLimit.some((value, index) => {
-          if (temperature <= value) {
-            temperatureIndex = index;
-            return true;
-          }
-        })
-
-        let humidityIndex = undefined;
-
-        humidityLimit.some((value, index) => {
-          if (humidity <= value) {
-            humidityIndex = index;
-            return true;
-          }
-        })
-
-        let temperatureOffset = [20, 20, 20];
-        let humidityOffset = [20, 20, 20];
-
-        temperatureOffset[temperatureIndex] = 70;
-        humidityOffset[humidityIndex] = 70;
-        
-        console.log(temperature, humidity, temperatureOffset, humidityOffset)
-        setGaugeValue(temperatureChart, formatNumber(temperature, "°C"), temperatureOffset);
-        setGaugeValue(humidityChart, formatNumber(humidity, "%"), humidityOffset);
-      }
+      $(() => {
+        console.log("hallo")
+      })
 
       function setStatus(text, type = 'secondary') {
         const badge = document.getElementById('statusBadge');

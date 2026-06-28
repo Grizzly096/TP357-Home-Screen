@@ -36,11 +36,10 @@ def parse(key, data):
 def callback(device, advertisement_data):
     # include device name (may be None)
     name = device.name or "unknown"
-    print(f"callback() device={device.address} name={name} RSSI={advertisement_data.rssi}")
-    if device.address.upper() not in TARGET["mac"] and not name in TARGET["name"]:
-        print("  -> not target, ignoring")
-        return
 
+    if device.address.upper() not in TARGET["mac"] and not name in TARGET["name"]:
+        return
+    print(name)
     print("  -> target matched, processing manufacturer data")
 
     for key, data in advertisement_data.manufacturer_data.items():
@@ -52,6 +51,7 @@ def callback(device, advertisement_data):
             DATA["temperature"] = temperature;
             DATA["humidity"] = hum;
             return
+
 async def start():
     print("start() initializing scanner")
     scanner = BleakScanner(callback)
